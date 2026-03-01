@@ -18,8 +18,8 @@ class Post(
     @Column(name = "id")
     val id: Long = 0L,
 
-    @Column(name = "board_id", nullable = false)
-    val boardId: Long,
+    @Column(name = "community_id", nullable = false)
+    val communityId: Long,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
@@ -30,5 +30,4 @@ class Post(
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     var content: String,
-
-    ) : BaseTimeEntity()
+) : BaseTimeEntity()
