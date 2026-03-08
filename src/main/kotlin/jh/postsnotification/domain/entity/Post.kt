@@ -22,8 +22,8 @@ class Post(
     val communityId: Long,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
-    val member: Member,
+    @JoinColumn(name = "user_id", nullable = false)
+    val user: User,
 
     @Column(name = "title", nullable = false, length = 255)
     var title: String,
