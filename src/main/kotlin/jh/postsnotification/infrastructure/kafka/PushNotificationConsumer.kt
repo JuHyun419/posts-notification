@@ -5,6 +5,8 @@ import jh.postsnotification.application.service.CandidatePostService
 import jh.postsnotification.application.service.PushHistoryService
 import jh.postsnotification.domain.enums.PushTime
 import jh.postsnotification.infrastructure.push.PushClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.annotation.KafkaListener
@@ -32,7 +34,7 @@ class PushNotificationConsumer(
                 try {
                     process(userId, pushTime)
                 } catch (e: Exception) {
-                    log.error("푸시 처리 실패 - userId={}", userId, e)
+                    log.error("푸시 발송 실패 :: userId: $userId", e)
                     // TODO: DLQ & redrive
                 }
             }
@@ -43,19 +45,28 @@ class PushNotificationConsumer(
     /**
      * 추천글 푸시 발송 Flow
      * 1. 유저별 후보 게시글 조회
-     * 2. 중복 발송 체크 & 후보글 랜덤 선택
-     * 3. 푸시 발송
-     * 4. 발송 이력 저장
+     *   - 점심: 후보 게시글에서 랜덤 조회
+     *   - 저녁: 점심에 푸시 발송 중복 푸시글 제외
+     * 2. 푸시 & 알림 발송
+     * 3. 발송 이력 저장 (점심만 저장)
      */
     private suspend fun process(userId: Long, pushTime: PushTime) {
         val postIds = candidatePostService.getCandidatePostIds(userId, pushTime)
 
-        val postId = postIds
-            .filter { pushHistoryService.isAvailablePost(userId, it) }
-            .randomOrNull() ?: return
+        val postId = when (pushTime) {
+            PushTime.LUNCH -> postIds.randomOrNull() ?: return
+            PushTime.DINNER -> postIds
+                .filter { pushHistoryService.isAvailablePost(userId, it) }
+                .randomOrNull() ?: return
+        }
 
-        pushClient.sendPush(userId, postId)
+        coroutineScope {
+            async { pushClient.sendPush(userId, postId) }
+            async { pushClient.sendNotification(userId, postId) }
+        }
 
-        pushHistoryService.markAsSent(userId, postId)
+        if (pushTime == PushTime.LUNCH) {
+            pushHistoryService.markAsSent(userId, postId)
+        }
     }
 }
