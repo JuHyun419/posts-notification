@@ -4,6 +4,7 @@ import jh.postsnotification.domain.entity.Post
 import jh.postsnotification.domain.enums.PushTime
 import jh.postsnotification.domain.repository.CommunityRepository
 import jh.postsnotification.domain.repository.PostRepository
+import jh.postsnotification.infrastructure.redis.RedisCacheManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -11,7 +12,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
-import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.time.LocalDate
@@ -23,7 +23,7 @@ private typealias CommunityPosts = Pair<Long, List<Post>>
 class CacheWarmUpService(
     private val communityRepository: CommunityRepository,
     private val postRepository: PostRepository,
-    private val stringRedisTemplate: StringRedisTemplate,
+    private val redisCacheManager: RedisCacheManager,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -51,14 +51,12 @@ class CacheWarmUpService(
                 .awaitAll()
         }
 
-    // TODO: Redis 모듈 분리
     private fun cachePostIds(pushTime: PushTime, communityId: Long, posts: List<Post>) {
         if (posts.isEmpty()) return
 
         val key = warmUpCacheKey(pushTime, communityId)
         val postIds = posts.map { it.id.toString() }.toTypedArray()
-        stringRedisTemplate.opsForSet().add(key, *postIds)
-        stringRedisTemplate.expire(key, CACHE_TTL)
+        redisCacheManager.addToSet(key, CACHE_TTL, *postIds)
     }
 
     private fun warmUpCacheKey(pushTime: PushTime, communityId: Long): String {
