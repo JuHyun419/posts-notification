@@ -1,7 +1,6 @@
 package jh.postsnotification.application.service
 
 import jh.postsnotification.domain.entity.Post
-import jh.postsnotification.domain.enums.PushTime
 import jh.postsnotification.domain.repository.CommunityRepository
 import jh.postsnotification.domain.repository.PostRepository
 import jh.postsnotification.infrastructure.redis.RedisCacheManager
@@ -27,12 +26,12 @@ class CacheWarmUpService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun warmUp(pushTime: PushTime) = runBlocking {
+    fun warmUp() = runBlocking {
         val communityIds = communityRepository.findAllActiveIds()
         log.info("CacheWarmUp community count: {}", communityIds.size)
 
         fetchPostsByCommunity(communityIds)
-            .forEach { (communityId, posts) -> cachePostIds(pushTime, communityId, posts) }
+            .forEach { (communityId, posts) -> cachePostIds(communityId, posts) }
 
         log.info("CacheWarmUp End!")
     }
@@ -51,21 +50,21 @@ class CacheWarmUpService(
                 .awaitAll()
         }
 
-    private fun cachePostIds(pushTime: PushTime, communityId: Long, posts: List<Post>) {
+    private fun cachePostIds(communityId: Long, posts: List<Post>) {
         if (posts.isEmpty()) return
 
-        val key = warmUpCacheKey(pushTime, communityId)
+        val key = warmUpCacheKey(communityId)
         val postIds = posts.map { it.id.toString() }.toTypedArray()
         redisCacheManager.addToSet(key, CACHE_TTL, *postIds)
     }
 
-    private fun warmUpCacheKey(pushTime: PushTime, communityId: Long): String {
+    private fun warmUpCacheKey(communityId: Long): String {
         val date = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
-        return "$CACHE_KEY_PREFIX:$date:${pushTime.name}:$communityId"
+        return "$CACHE_KEY_PREFIX:$date:$communityId"
     }
 
     companion object {
-        private const val CACHE_KEY_PREFIX = "community:candidate_post:cache_warmup"
+        const val CACHE_KEY_PREFIX = "community:candidate_post:cache_warmup"
         private val CACHE_TTL = Duration.ofHours(4)
     }
 }

@@ -51,7 +51,7 @@ class PushNotificationConsumer(
      * 3. 발송 이력 저장 (점심만 저장)
      */
     private suspend fun process(userId: Long, pushTime: PushTime) {
-        val postIds = candidatePostService.getCandidatePostIds(userId, pushTime)
+        val postIds = candidatePostService.getCandidatePostIds(userId)
 
         val postId = when (pushTime) {
             PushTime.LUNCH -> postIds.randomOrNull() ?: return

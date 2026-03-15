@@ -1,6 +1,5 @@
 package jh.postsnotification.application.service
 
-import jh.postsnotification.domain.enums.PushTime
 import jh.postsnotification.domain.repository.UserCommunityRepository
 import jh.postsnotification.infrastructure.redis.RedisCacheManager
 import org.springframework.stereotype.Service
@@ -12,22 +11,22 @@ class CandidatePostService(
     private val userCommunityRepository: UserCommunityRepository,
     private val redisCacheManager: RedisCacheManager,
 ) {
-    fun getCandidatePostIds(userId: Long, pushTime: PushTime): List<Long> {
+    fun getCandidatePostIds(userId: Long): List<Long> {
         val communityIds = userCommunityRepository.findCommunityIdsByUserId(userId)
         if (communityIds.isEmpty()) return emptyList()
 
         return communityIds
             .mapNotNull { communityId ->
-                redisCacheManager.getMembers(candidateCacheKey(communityId, pushTime))
+                redisCacheManager.getMembers(candidateCacheKey(communityId))
             }
             .flatten()
             .map { it.toLong() }
     }
 
-    private fun candidateCacheKey(communityId: Long, pushTime: PushTime): String {
+    private fun candidateCacheKey(communityId: Long): String {
         val date = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
 
-        return "$CACHE_KEY_PREFIX:$date:${pushTime.name}:$communityId"
+        return "$CACHE_KEY_PREFIX:$date:$communityId"
     }
 
     companion object {

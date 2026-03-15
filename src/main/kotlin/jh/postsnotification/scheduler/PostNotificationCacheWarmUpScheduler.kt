@@ -1,7 +1,6 @@
 package jh.postsnotification.scheduler
 
 import jh.postsnotification.application.service.CacheWarmUpService
-import jh.postsnotification.domain.enums.PushTime
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
@@ -11,11 +10,11 @@ class PostNotificationCacheWarmUpScheduler(
 ) {
     @Scheduled(cron = "0 45 11 * * *")
     fun warmUpForLunch() {
-        cacheWarmUpService.warmUp(PushTime.LUNCH)
+        cacheWarmUpService.warmUp()
     }
 
     @Scheduled(cron = "0 45 17 * * *")
     fun warmUpForDinner() {
-        cacheWarmUpService.warmUp(PushTime.DINNER)
+        cacheWarmUpService.warmUp()
     }
 }
